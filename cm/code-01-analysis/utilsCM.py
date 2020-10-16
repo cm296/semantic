@@ -134,6 +134,13 @@ def correlation(a, b):
     r = (zs(a) * zs(b)).mean()
     return r
 
+def RandomCovMatrix(predictor_variable_sub):
+    _mean = np.mean(predictor_variable_sub, axis=0)
+    _cov = np.cov(predictor_variable_sub, rowvar=False)
+    predictor_variable_sub_random = np.random.multivariate_normal(_mean, _cov, (predictor_variable_sub.shape[0]))
+    return predictor_variable_sub_random
+
+
 def iter_cvregress(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,savefolder = None, Ypredict = None, pretrained = True):
     #How many fold to compute?
     kf = KFold(n_splits = k)
@@ -185,6 +192,44 @@ def iter_cvregress(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,savefolde
             
     return mean_r
 
+def iter_cvregress_SaveInfo(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9, saveinfo = None):
+    #How many fold to compute?
+    kf = KFold(n_splits = k)
+    l2 = 0.0
+    if pc is not None:
+        pca = PCA(n_components=pc)
+
+    if iROI:
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + iROI)
+    else:
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + ilayer)
+        
+    rs = []#[[] for i in (0,(Y.values.shape[1]-1))]
+    
+    for train_index, test_index in kf.split(X_features):
+        train_features = X_features[train_index,]
+        test_features = X_features[test_index,]
+        if pc is not None:
+            pca.fit(X_features[train_index,])
+            train_features = pca.transform(train_features)
+            test_features = pca.transform(test_features)
+        train_Y = Y[train_index,]
+        test_Y = Y[test_index,]
+        
+        r = []
+        _,r = regression_iter(train_features, train_Y, test_features,  test_Y, l2=l2)
+        rs.append(r)
+
+    rs = np.array(rs)
+
+    mean_r = np.nanmean(rs, axis=0) #TO handle Nans, since the feature space is so sparse
+    # print(mean_r)
+    
+    #Saved information
+    if saveinfo is not None:
+        np.save(saveinfo, mean_r)
+            
+    return mean_r
 
 
 def regression_iter(x_train, y_train, x_test, y_test, l2=0.0, validate=True):
