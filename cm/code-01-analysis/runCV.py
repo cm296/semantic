@@ -5,12 +5,14 @@ import pandas as pd
 
 
 def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNActvtn','ROIpred'},layer={'conv_5','fc_3'},ROI={'EVC','ObjectROI'},Sub=[1,2,3,4],Keepncomps=list(range(2,42,2)),RandomWs=False):
+    
     ### Subset of things info
     datapath='../../../data-00/'
     WIpath = '../../../data-04/'
     nsample = 12
     WrdThingsInfo = pd.read_csv(WIpath + 'KeptTHINGSInfo_n' + str(nsample) +'.csv',sep=',',index_col = 0)
     
+
     if Ypredict is 'Word2Sense':
         ### Load Word2Vec subset
         filename = 'ThingsWrd2Vec_subset.txt'
@@ -20,7 +22,6 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
         Y_embeddings_subset
     elif Ypredict is 'Word2Vec':
         ### Load Word2Sense subset
-
         pathtofile = '../../../data-07/'
         Y_embeddings_subset = pd.read_csv(pathtofile + "ThingsWrd2Sns_subset.txt", sep=",",index_col = 0)
 
@@ -36,16 +37,19 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
                         if not pretrained_val:
                             Subfile = Subfile + '_untrained'
 
-                        thisSub = np.load(Subfile + '.npy')
                         #load ROIpred as predictor variable
+                        thisSub = np.load(Subfile + '.npy')
+
+                        if RandomWs:
+                            thisSub = utilsCM.RandomCovMatrix(thisSub)
+                            
                         if iSub is 1:
                             predictor_variable = thisSub
                         else:
                             predictor_variable = np.append( predictor_variable , thisSub, axis = 1)
                     
                     predictor_variable_sub = predictor_variable[WrdThingsInfo['old_index']]
-                    if RandomWs:
-                        predictor_variable_sub = utilsCM.RandomCovMatrix(predictor_variable_sub)
+                    
 
                     for icomps in Keepncomps:
                         savefilename = 'Predict' + Ypredict + '_' + ikeyword + '_' +iROI + '_'+ ilayer + '_'+ str(icomps) +'PCs'
@@ -57,6 +61,7 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
                                                 
                         if not os.path.isfile(savepath + savefilename + '.npy'):
                             mean_r = utilsCM.iter_cvregress_SaveInfo(predictor_variable_sub,Y_embeddings_subset,ikeyword,ilayer,icomps,iROI,saveinfo = savepath + savefilename)        
+
         
             elif ikeyword is 'DNNActvtn':
 
@@ -64,24 +69,18 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
                 if not pretrained_val:
                     predictor_variable_file = predictor_variable_file + '_untrained'
 
-                print('loading ' + predictor_variable_file)
+                
                 predictor_variable = pd.read_csv(predictor_variable_file + '.csv', header=None, index_col=0).iloc[:,:].to_numpy()            
-                print('loaded ' + predictor_variable_file)
                 predictor_variable_sub = predictor_variable[WrdThingsInfo['old_index']]
 
-                if RandomWs: #make it random if it's random
-                    print('making random cov matrix')
-                    predictor_variable_sub = utilsCM.RandomCovMatrix(predictor_variable_sub)
-                    print('made random cov matrix')
-
+                
                 for icomps in Keepncomps:
                     print(icomps)
                     savefilename = 'Predict' + Ypredict + '_'  + ikeyword + '_'+ ilayer + '_'+ str(icomps) +'PCs'
                 
                     if not pretrained_val:
                         savefilename = savefilename +'_untrained'
-                    if RandomWs:
-                        savefilename = savefilename+'_random'
+                    
                                             
                     if not os.path.isfile(savepath + savefilename + '.npy'):
                         mean_r = utilsCM.iter_cvregress_SaveInfo(predictor_variable_sub,Y_embeddings_subset,ikeyword,ilayer,icomps,saveinfo = savepath + savefilename)
