@@ -2,12 +2,12 @@ import os
 import utilsCM
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-
-def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNActvtn','ROIpred'},layer={'conv_1','conv_5','fc_3'},ROI={'EVC','ObjectROI'},Sub=[1,2,3,4],Keepncomps=list(range(2,42,2)),RandomWs=False):
+def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNActvtn','ROIpred'},datapath='../../../data-00/',layer={'conv_1','conv_5','fc_3'},ROI={'EVC','ObjectROI'},Sub=[1,2,3,4],Keepncomps=list(range(2,42,2)),RandomWs=False):
     
     ### Subset of things info
-    datapath='../../../data-00/'
+    
     WIpath = '../../../data-04/'
     nsample = 12
     WrdThingsInfo = pd.read_csv(WIpath + 'KeptTHINGSInfo_n' + str(nsample) +'.csv',sep=',',index_col = 0)
@@ -33,28 +33,38 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
         for ilayer in layer:
             if ikeyword is 'ROIpred':
                 for iROI in ROI: 
-                    predictor_variable = {}
+
+                    savefigname = 'Predict' + Ypredict + '_' + ikeyword + '_' +iROI + '_'+ ilayer
+                    # if RandomWs:
+                    #         savefigname = savefigname + '_random'
+
+
                     for iSub in Sub:
                         Subfile = datapath +  "ROIpred_Sub" + str(iSub) + '_' + iROI + "_" + ilayer 
 
                         if not pretrained_val:
                             Subfile = Subfile + '_untrained'
-
-                        #load ROIpred as predictor variable
-                        thisSub = np.load(Subfile + '.npy')
-                        # print('This Sub' ,  thisSub.shape)
-
                         if RandomWs:
-                            thisSub = utilsCM.RandomCovMatrix(thisSub)
-                        # print('This Sub after Random Cov ' ,  thisSub.shape)
+                            Subfile = Subfile + '_random'
 
+                        
+                        thisSub = np.load(Subfile + '.npy')
+                        
+                        thisSub = thisSub[WrdThingsInfo['old_index']]
+                        
                         if iSub is 1:
-                            predictor_variable = thisSub
+                            predictor_variable_sub = thisSub
                         else:
-                            predictor_variable = np.append( predictor_variable , thisSub, axis = 1)
-                    
-                    predictor_variable_sub = predictor_variable[WrdThingsInfo['old_index']]
-                    # print('concat predictor_variable_sub ' , predictor_variable_sub.shape)
+                            predictor_variable_sub = np.append( predictor_variable_sub , thisSub, axis = 1)
+
+                    print(iROI, predictor_variable_sub.shape)
+
+
+                    # plt.imshow(predictor_variable_sub, vmin=-4, vmax=4)
+                    # plt.title(savefigname)
+                    # plt.colorbar()
+                    # plt.savefig(savepath + savefigname + '.png') 
+                    # plt.close("all")
 
                     for icomps in Keepncomps:
                         savefilename = 'Predict' + Ypredict + '_' + ikeyword + '_' +iROI + '_'+ ilayer + '_'+ str(icomps) +'PCs'
@@ -63,7 +73,8 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
                             savefilename = savefilename+'_untrained'
                         if RandomWs:
                             savefilename = savefilename+'_random'
-                                                
+
+
                         if not os.path.isfile(savepath + savefilename + '.npy'):
                             mean_r = utilsCM.iter_cvregress_SaveInfo(predictor_variable_sub,Y_embeddings_subset,ikeyword,ilayer,icomps,iROI,saveinfo = savepath + savefilename)        
 
@@ -75,8 +86,9 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
                     predictor_variable_file = predictor_variable_file + '_untrained'
 
                 
-                predictor_variable = pd.read_csv(predictor_variable_file + '.csv', header=None, index_col=0).iloc[:,:].to_numpy()            
-                predictor_variable_sub = predictor_variable[WrdThingsInfo['old_index']]
+                predictor_variable_sub = pd.read_csv(predictor_variable_file + '.csv', header=None, index_col=0).iloc[:,:].to_numpy()            
+                predictor_variable_sub = predictor_variable_sub[WrdThingsInfo['old_index']]
+
 
                 
                 for icomps in Keepncomps:
@@ -91,7 +103,7 @@ def runCV_execute(pretrained_val,savepath,Ypredict='Word2Sense',keyword={'DNNAct
 
 
 
-def buildDict(datapath,figurepath,Ypredict='Word2Sense',keyword={'ROIpred','DNNActvtn'},layer={'conv_5'},ROI={'EVC','ObjectROI'},Sub=[1,2,3,4],Keepncomps=list(range(2,42,2)),pretrained_val = True,RandomWs=[True, False]):
+def buildDict(datapath,figurepath,Ypredict='Word2Sense',setbonf = True, keyword={'ROIpred','DNNActvtn'},layer={'conv_5'},ROI={'EVC','ObjectROI'},Sub=[1,2,3,4],Keepncomps=list(range(2,42,2)),pretrained_val = True,RandomWs=[True, False]):
     if Ypredict is 'Word2Sense':
         ### Load Word2Vec subset
         filename = 'ThingsWrd2Vec_subset.txt'
@@ -104,7 +116,10 @@ def buildDict(datapath,figurepath,Ypredict='Word2Sense',keyword={'ROIpred','DNNA
         pathtofile = '../../../data-07/'
         Y_embeddings_subset = pd.read_csv(pathtofile + "ThingsWrd2Sns_subset.txt", sep=",",index_col = 0)
 
-    tresh_bonf = utilsCM.p2r(.05/Y_embeddings_subset.shape[1], Y_embeddings_subset.shape[0])
+    if setbonf:
+        tresh_bonf = utilsCM.p2r(.05/Y_embeddings_subset.shape[1], Y_embeddings_subset.shape[0])
+    else:
+        tresh_bonf = 0
 
     myDict_count = {}
     myDict_mean = {}
