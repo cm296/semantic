@@ -140,8 +140,16 @@ def RandomCovMatrix(predictor_variable_sub):
     predictor_variable_sub_random = np.random.multivariate_normal(_mean, _cov, (predictor_variable_sub.shape[0]))
     return predictor_variable_sub_random
 
+def PermuteFeats(weights,thingsFeats,iters = 500):
+    arr = np.zeros((iters, weights.shape[0] * thingsFeats.shape[0]))
+    for i in range(iters):
+        permutation = np.random.choice(weights.shape[1], weights.shape[1], replace=False)
+        p_weight = weights[:, permutation]
+        ROIpred = np.matmul(thingsFeats,p_weight.transpose())
+        arr[i] = ROIpred.flatten()
+    return arr
 
-def iter_cvregress(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,savefolder = None, Ypredict = None, pretrained = True):
+def iter_cvregress(X_features,Y,ilayer,pc = None,iROI = [],k=9,savefolder = None, Ypredict = None, pretrained = True):
     #How many fold to compute?
     kf = KFold(n_splits = k)
     l2 = 0.0
@@ -149,10 +157,10 @@ def iter_cvregress(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,savefolde
         pca = PCA(n_components=pc)
 
     if iROI:
-        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + iROI)
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained from ' + iROI)
         # filename = 'PredictSENSES_' + keyword + '_' +iROI + '_'+ ilayer + '_'+ str(pc) +'PCs'
     else:
-        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + ilayer)
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained from ' + ilayer)
         # filename = 'PredictSENSES_' + keyword + '_'+ ilayer + '_'+ str(pc) +'PCs'
         
     rs = []#[[] for i in (0,(Y.values.shape[1]-1))]
@@ -192,7 +200,7 @@ def iter_cvregress(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,savefolde
             
     return mean_r
 
-def iter_cvregress_SaveInfo(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9, saveinfo = None):
+def iter_cvregress_SaveInfo(X_features,Y,ilayer,pc = None,iROI = [],k=9, saveinfo = None):
     #How many fold to compute?
     kf = KFold(n_splits = k)
     l2 = 0.0
@@ -200,9 +208,9 @@ def iter_cvregress_SaveInfo(X_features,Y,keyword,ilayer,pc = None,iROI = [],k=9,
         pca = PCA(n_components=pc)
 
     if iROI:
-        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + iROI)
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained from ' + iROI)
     else:
-        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained of ' + keyword + ' from ' + ilayer)
+        print('k-fold regression, independet variable: ' + str(pc) + ' PCs retained from ' + ilayer)
         
     rs = []#[[] for i in (0,(Y.values.shape[1]-1))]
     
